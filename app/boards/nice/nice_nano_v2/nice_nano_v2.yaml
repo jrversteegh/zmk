@@ -1,0 +1,16 @@
+identifier: nice_nano_v2
+name: nice!nano v2
+type: mcu
+arch: arm
+soc: nrf52840
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - adc
+  - usb_device
+  - ble
+  - ieee802154
+  - pwm
+  - watchdog
