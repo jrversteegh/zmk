@@ -9,6 +9,9 @@ package-mode = false
 [tool.poetry.dependencies]
 python = "^3.11"
 requests = "^2.32.3"
+patool = "^4.0.2"
+semver = "^3.0.4"
+tqdm = "^4.67.1"
 
 
 [tool.poetry.group.dev.dependencies]

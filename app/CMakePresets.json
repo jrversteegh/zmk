@@ -1,0 +1,28 @@
+{ 
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "left",
+      "displayName": "release left",
+      "cacheVariables": {
+        "SHIELD": "splitkb_aurora_lily58_left",
+        "ZEPHYR_TOOLCHAIN_VARIANT": "zephyr",
+        "ZEPHYR_SDK_INSTALL_DIR": "/home/jaapie/Platforms/zephyr/sdk/zephyr-sdk-0.17.0"
+      }
+    },
+    {
+      "name": "right",
+      "displayName": "release right",
+      "cacheVariables": {
+        "SHIELD": "splitkb_aurora_lily58_right",
+        "ZEPHYR_TOOLCHAIN_VARIANT": "zephyr",
+        "ZEPHYR_SDK_INSTALL_DIR": "/home/jaapie/Platforms/zephyr/sdk/zephyr-sdk-0.17.0"
+      }
+    }
+  ]
+}

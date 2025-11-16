@@ -1,6 +1,0 @@
-board:                                                                                               
-  name: nice_nano_v2                                                                             
-  full_name: Nice!Nano V2.0                                                                         
-  vendor: nice                                                                                      
-  socs:                                                                                              
-    - name: nrf52840
