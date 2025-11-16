@@ -653,6 +653,7 @@ endmenu # ZMK
 if SOC_FAMILY_NORDIC_NRF
 
 config NRF_SOC_VALIDATE_HEADERS_DISABLED
+    bool "Disable NRF header validation"
     default y
 
 endif
