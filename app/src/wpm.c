@@ -18,7 +18,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 #include <zmk/wpm.h>
 
-#define WPM_UPDATE_INTERVAL_SECONDS 1
+#define WPM_UPDATE_INTERVAL_SECONDS 5
 #define WPM_RESET_INTERVAL_SECONDS 5
 
 // See https://en.wikipedia.org/wiki/Words_per_minute
@@ -51,13 +51,11 @@ void wpm_work_handler(struct k_work *work) {
     wpm_state = (key_pressed_count / CHARS_PER_WORD) /
                 (wpm_update_counter * WPM_UPDATE_INTERVAL_SECONDS / 60.0);
 
-    if (last_wpm_state != wpm_state) {
-        LOG_DBG("Raised WPM state changed %d wpm_update_counter %d", wpm_state, wpm_update_counter);
+    LOG_DBG("Raised WPM state changed %d wpm_update_counter %d", wpm_state, wpm_update_counter);
 
-        raise_zmk_wpm_state_changed((struct zmk_wpm_state_changed){.state = wpm_state});
+    raise_zmk_wpm_state_changed((struct zmk_wpm_state_changed){.state = wpm_state});
 
-        last_wpm_state = wpm_state;
-    }
+    last_wpm_state = wpm_state;
 
     if (wpm_update_counter >= WPM_RESET_INTERVAL_SECONDS) {
         wpm_update_counter = 0;
