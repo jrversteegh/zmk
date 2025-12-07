@@ -11,6 +11,7 @@
 #include <zephyr/pm/device_runtime.h>
 #include <zephyr/pm/pm.h>
 #include <zephyr/sys/poweroff.h>
+#include <zmk/events/battery_state_changed.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
@@ -133,5 +134,21 @@ int zmk_pm_soft_off(void) {
     sys_poweroff();
     return 0;
 }
+
+static int pm_battery_changed_handler(const zmk_event_t *eh) {
+    const struct zmk_battery_state_changed *ev = as_zmk_battery_state_changed(eh);
+    if (ev) {
+        if (ev->millivolts < 3450) {
+            return zmk_pm_soft_off();
+        }
+    }
+
+    return -ENOTSUP;
+}
+
+
+ZMK_LISTENER(pm_battery_response, pm_battery_changed_handler);
+
+ZMK_SUBSCRIPTION(pm_battery_response, zmk_battery_state_changed);
 
 #endif // IS_ENABLED(CONFIG_ZMK_PM_SOFT_OFF)

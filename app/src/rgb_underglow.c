@@ -24,6 +24,7 @@
 #include <zmk/event_manager.h>
 #include <zmk/events/activity_state_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
+#include <zmk/events/battery_state_changed.h>
 #include <zmk/workqueue.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
@@ -263,7 +264,8 @@ static int zmk_rgb_underglow_init(void) {
         animation_speed : CONFIG_ZMK_RGB_UNDERGLOW_SPD_START,
         current_effect : CONFIG_ZMK_RGB_UNDERGLOW_EFF_START,
         animation_step : 0,
-        on : IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_ON_START)
+        on : IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_ON_START),
+        force_on : false
     };
 
 #if IS_ENABLED(CONFIG_SETTINGS)
@@ -319,13 +321,13 @@ int zmk_rgb_underglow_on(void) {
 }
 
 int zmk_rgb_underglow_force_on(void) {
-    zmk_rgb_underglow_on();
     state.force_on = true;
+    zmk_rgb_underglow_on();
 }
 
 int zmk_rgb_underglow_force_off(void) {
-    zmk_rgb_underglow_off();
     state.force_on = false;
+    zmk_rgb_underglow_off();
 }
 
 static void zmk_rgb_underglow_off_handler(struct k_work *work) {
@@ -525,6 +527,13 @@ static int rgb_underglow_event_listener(const zmk_event_t *eh) {
     }
 #endif
 
+    const struct zmk_battery_state_changed *ev = as_zmk_battery_state_changed(eh);
+    if (ev) {
+        if (ev->millivolts < 3600) {
+            return zmk_rgb_underglow_force_off();
+        }
+    }
+
     return -ENOTSUP;
 }
 
@@ -539,5 +548,7 @@ ZMK_SUBSCRIPTION(rgb_underglow, zmk_activity_state_changed);
 #if IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_AUTO_OFF_USB)
 ZMK_SUBSCRIPTION(rgb_underglow, zmk_usb_conn_state_changed);
 #endif
+
+ZMK_SUBSCRIPTION(rgb_underglow, zmk_battery_state_changed);
 
 SYS_INIT(zmk_rgb_underglow_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
