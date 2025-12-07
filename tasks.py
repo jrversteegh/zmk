@@ -25,6 +25,17 @@ def build(ctx):
 
 
 @task
+def debug(ctx):
+    """Build"""
+    sides = ["left", "right"]
+    for cmd in [
+        f"west build -p -b nice_nano@2.0.0 -d build/{side} app -- -DZMK_EXTRA_MODULES={zmk_config} -DZMK_CONFIG={zmk_config}/config --preset={side}-debug" for side in sides
+    ] \
+    + [f"cp build/{side}/zephyr/zmk.uf2 lily58_{side}-debug.uf2" for side in sides]:
+        ctx.run(cmd, echo=True)
+
+
+@task
 def clean(ctx):
     """Build"""
     for cmd in (

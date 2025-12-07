@@ -16,13 +16,11 @@
       }
     },
     {
-      "name": "left-logging",
-      "displayName": "release left",
+      "name": "left-debug",
+      "displayName": "debug left",
+      "inherits": "left",
       "cacheVariables": {
-        "SHIELD": "splitkb_aurora_lily58_left nice_view_nano_adapter nice_view_orca",
-        "SNIPPET": "zmk-usb-logging",
-        "ZEPHYR_TOOLCHAIN_VARIANT": "zephyr",
-        "ZEPHYR_SDK_INSTALL_DIR": "/home/jaapie/Platforms/zephyr/sdk/zephyr-sdk-0.17.0"
+        "SNIPPET": "zmk-usb-logging"
       }
     },
     {
@@ -32,6 +30,14 @@
         "SHIELD": "splitkb_aurora_lily58_right nice_view_nano_adapter nice_view_orca",
         "ZEPHYR_TOOLCHAIN_VARIANT": "zephyr",
         "ZEPHYR_SDK_INSTALL_DIR": "/home/jaapie/Platforms/zephyr/sdk/zephyr-sdk-0.17.0"
+      }
+    },
+    {
+      "name": "right-debug",
+      "displayName": "debug right",
+      "inherits": "right",
+      "cacheVariables": {
+        "SNIPPET": "zmk-usb-logging"
       }
     }
   ]
