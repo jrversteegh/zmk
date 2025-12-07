@@ -10,7 +10,17 @@
       "name": "left",
       "displayName": "release left",
       "cacheVariables": {
-        "SHIELD": "splitkb_aurora_lily58_left nice_view_nano_adapter nice_view",
+        "SHIELD": "splitkb_aurora_lily58_left nice_view_nano_adapter nice_view_orca",
+        "ZEPHYR_TOOLCHAIN_VARIANT": "zephyr",
+        "ZEPHYR_SDK_INSTALL_DIR": "/home/jaapie/Platforms/zephyr/sdk/zephyr-sdk-0.17.0"
+      }
+    },
+    {
+      "name": "left-logging",
+      "displayName": "release left",
+      "cacheVariables": {
+        "SHIELD": "splitkb_aurora_lily58_left nice_view_nano_adapter nice_view_orca",
+        "SNIPPET": "zmk-usb-logging",
         "ZEPHYR_TOOLCHAIN_VARIANT": "zephyr",
         "ZEPHYR_SDK_INSTALL_DIR": "/home/jaapie/Platforms/zephyr/sdk/zephyr-sdk-0.17.0"
       }
@@ -19,7 +29,7 @@
       "name": "right",
       "displayName": "release right",
       "cacheVariables": {
-        "SHIELD": "splitkb_aurora_lily58_right nice_view_nano_adapter nice_view",
+        "SHIELD": "splitkb_aurora_lily58_right nice_view_nano_adapter nice_view_orca",
         "ZEPHYR_TOOLCHAIN_VARIANT": "zephyr",
         "ZEPHYR_SDK_INSTALL_DIR": "/home/jaapie/Platforms/zephyr/sdk/zephyr-sdk-0.17.0"
       }
