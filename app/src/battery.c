@@ -19,12 +19,15 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/battery.h>
 #include <zmk/events/battery_state_changed.h>
 #include <zmk/events/activity_state_changed.h>
+#include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/activity.h>
 #include <zmk/workqueue.h>
 
 static uint8_t last_state_of_charge = 0;
+static uint16_t last_millivolts = 0;
 
 uint8_t zmk_battery_state_of_charge(void) { return last_state_of_charge; }
+uint16_t zmk_battery_millivolts(void) { return last_millivolts; }
 
 #if DT_HAS_CHOSEN(zmk_battery)
 static const struct device *const battery = DEVICE_DT_GET(DT_CHOSEN(zmk_battery));
@@ -34,74 +37,51 @@ static const struct device *const battery = DEVICE_DT_GET(DT_CHOSEN(zmk_battery)
 static const struct device *battery;
 #endif
 
-#if IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_LITHIUM_VOLTAGE)
-static uint8_t lithium_ion_mv_to_pct(int16_t bat_mv) {
-    // Simple linear approximation of a battery based off adafruit's discharge graph:
-    // https://learn.adafruit.com/li-ion-and-lipoly-batteries/voltages
-
-    if (bat_mv >= 4200) {
-        return 100;
-    } else if (bat_mv <= 3450) {
-        return 0;
-    }
-
-    return bat_mv * 2 / 15 - 459;
-}
-
-#endif // IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_LITHIUM_VOLTAGE)
-
 static int zmk_battery_update(const struct device *battery) {
-    struct sensor_value state_of_charge;
     int rc;
 
-#if IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_STATE_OF_CHARGE)
-
-    rc = sensor_sample_fetch_chan(battery, SENSOR_CHAN_GAUGE_STATE_OF_CHARGE);
+    rc = sensor_sample_fetch_chan(battery, SENSOR_CHAN_ALL);
     if (rc != 0) {
         LOG_DBG("Failed to fetch battery values: %d", rc);
         return rc;
     }
 
+    struct sensor_value state_of_charge;
     rc = sensor_channel_get(battery, SENSOR_CHAN_GAUGE_STATE_OF_CHARGE, &state_of_charge);
 
     if (rc != 0) {
         LOG_DBG("Failed to get battery state of charge: %d", rc);
         return rc;
     }
-#elif IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_LITHIUM_VOLTAGE)
-    rc = sensor_sample_fetch_chan(battery, SENSOR_CHAN_VOLTAGE);
-    if (rc != 0) {
-        LOG_DBG("Failed to fetch battery values: %d", rc);
-        return rc;
-    }
 
     struct sensor_value voltage;
-    rc = sensor_channel_get(battery, SENSOR_CHAN_VOLTAGE, &voltage);
+    rc = sensor_channel_get(battery, SENSOR_CHAN_GAUGE_VOLTAGE, &voltage);
 
     if (rc != 0) {
         LOG_DBG("Failed to get battery voltage: %d", rc);
         return rc;
     }
 
-    uint16_t mv = voltage.val1 * 1000 + (voltage.val2 / 1000);
-    state_of_charge.val1 = lithium_ion_mv_to_pct(mv);
+    uint16_t millivolts = voltage.val1 * 1000 + (voltage.val2 / 1000);
 
-    LOG_DBG("State of change %d from %d mv", state_of_charge.val1, mv);
-#else
-#error "Not a supported reporting fetch mode"
-#endif
-
-    if (last_state_of_charge != state_of_charge.val1) {
+    if (state_of_charge.val1 != last_state_of_charge || millivolts != last_millivolts) {
         last_state_of_charge = state_of_charge.val1;
+        last_millivolts = millivolts;
 
         rc = raise_zmk_battery_state_changed(
-            (struct zmk_battery_state_changed){.state_of_charge = last_state_of_charge});
+            (struct zmk_battery_state_changed) {
+                .state_of_charge = last_state_of_charge,
+                .millivolts = last_millivolts
+            }
+        );
 
         if (rc != 0) {
             LOG_ERR("Failed to raise battery state changed event: %d", rc);
             return rc;
         }
     }
+
+    LOG_DBG("State of charge %d, %d mv", state_of_charge.val1, last_millivolts);
 
 #if IS_ENABLED(CONFIG_BT_BAS)
     if (bt_bas_get_battery_level() != last_state_of_charge) {
@@ -176,11 +156,15 @@ static int battery_event_listener(const zmk_event_t *eh) {
             break;
         }
     }
+    if (as_zmk_usb_conn_state_changed(eh)) {
+        k_work_submit_to_queue(zmk_workqueue_lowprio_work_q(), &battery_work);
+        return 0;
+    }
     return -ENOTSUP;
 }
 
 ZMK_LISTENER(battery, battery_event_listener);
-
 ZMK_SUBSCRIPTION(battery, zmk_activity_state_changed);
+ZMK_SUBSCRIPTION(battery, zmk_usb_conn_state_changed);
 
 SYS_INIT(zmk_battery_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
