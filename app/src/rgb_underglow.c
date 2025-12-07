@@ -322,12 +322,12 @@ int zmk_rgb_underglow_on(void) {
 
 int zmk_rgb_underglow_force_on(void) {
     state.force_on = true;
-    zmk_rgb_underglow_on();
+    return zmk_rgb_underglow_on();
 }
 
 int zmk_rgb_underglow_force_off(void) {
     state.force_on = false;
-    zmk_rgb_underglow_off();
+    return zmk_rgb_underglow_off();
 }
 
 static void zmk_rgb_underglow_off_handler(struct k_work *work) {
