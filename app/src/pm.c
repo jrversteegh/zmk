@@ -139,7 +139,11 @@ static int pm_battery_changed_handler(const zmk_event_t *eh) {
     const struct zmk_battery_state_changed *ev = as_zmk_battery_state_changed(eh);
     if (ev) {
         if (ev->millivolts < 3450) {
+            LOG_DBG("Low battery, powering off");
             return zmk_pm_soft_off();
+        }
+        else {
+            return 0;
         }
     }
 

@@ -530,7 +530,11 @@ static int rgb_underglow_event_listener(const zmk_event_t *eh) {
     const struct zmk_battery_state_changed *ev = as_zmk_battery_state_changed(eh);
     if (ev) {
         if (ev->millivolts < 3600) {
+            LOG_DBG("Low battery, turning off leds");
             return zmk_rgb_underglow_force_off();
+        }
+        else {
+            return 0;
         }
     }
 
