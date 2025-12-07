@@ -4,7 +4,7 @@
 if SHIELD_SPLITKB_AURORA_LILY58_LEFT
 
 config ZMK_KEYBOARD_NAME
-    default "Aurora Lily58"
+    default "Jaapies Lily58"
 
 config ZMK_SPLIT_ROLE_CENTRAL
     default y
