@@ -19,10 +19,14 @@
 #define RGB_EFR_CMD 12
 #define RGB_EFS_CMD 13
 #define RGB_COLOR_HSB_CMD 14
+#define RGB_FON_CMD 15
+#define RGB_FOFF_CMD 16
 
 #define RGB_TOG RGB_TOG_CMD 0
 #define RGB_ON RGB_ON_CMD 0
 #define RGB_OFF RGB_OFF_CMD 0
+#define RGB_FON RGB_FON_CMD 0
+#define RGB_FOFF RGB_FOFF_CMD 0
 #define RGB_HUI RGB_HUI_CMD 0
 #define RGB_HUD RGB_HUD_CMD 0
 #define RGB_SAI RGB_SAI_CMD 0

@@ -58,6 +58,7 @@ struct rgb_underglow_state {
     uint8_t current_effect;
     uint16_t animation_step;
     bool on;
+    bool force_on;
 };
 
 static const struct device *led_strip;
@@ -317,6 +318,16 @@ int zmk_rgb_underglow_on(void) {
     return zmk_rgb_underglow_save_state();
 }
 
+int zmk_rgb_underglow_force_on(void) {
+    zmk_rgb_underglow_on();
+    state.force_on = true;
+}
+
+int zmk_rgb_underglow_force_off(void) {
+    zmk_rgb_underglow_off();
+    state.force_on = false;
+}
+
 static void zmk_rgb_underglow_off_handler(struct k_work *work) {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         pixels[i] = (struct led_rgb){r : 0, g : 0, b : 0};
@@ -467,6 +478,15 @@ struct rgb_underglow_sleep_state {
     bool rgb_state_before_sleeping;
 };
 
+static int rgb_off_if_not_forced(void) {
+    if (!state.force_on) {
+        return zmk_rgb_underglow_off();
+    }
+    else {
+        return 0;
+    }
+}
+
 static int rgb_underglow_auto_state(bool target_wake_state) {
     static struct rgb_underglow_sleep_state sleep_state = {
         is_awake : true,
@@ -483,11 +503,11 @@ static int rgb_underglow_auto_state(bool target_wake_state) {
         if (sleep_state.rgb_state_before_sleeping) {
             return zmk_rgb_underglow_on();
         } else {
-            return zmk_rgb_underglow_off();
+            return rgb_off_if_not_forced();
         }
     } else {
         sleep_state.rgb_state_before_sleeping = state.on;
-        return zmk_rgb_underglow_off();
+        return rgb_off_if_not_forced();
     }
 }
 
