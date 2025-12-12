@@ -32,7 +32,6 @@ const struct zmk_split_transport_peripheral *active_transport;
 int zmk_split_transport_peripheral_command_handler(
     const struct zmk_split_transport_peripheral *transport,
     struct zmk_split_transport_central_command cmd) {
-    LOG_DBG("");
 
     switch (cmd.type) {
     case ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_INVOKE_BEHAVIOR: {
@@ -55,14 +54,17 @@ int zmk_split_transport_peripheral_command_handler(
         if (err) {
             LOG_ERR("Failed to invoke behavior %s: %d", binding.behavior_dev, err);
         }
+        return err;
     }
     case ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_PHYSICAL_LAYOUT: {
         zmk_physical_layouts_select(cmd.data.set_physical_layout.layout_idx);
+        return 0;
     }
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
     case ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_HID_INDICATORS: {
         raise_zmk_hid_indicators_changed((struct zmk_hid_indicators_changed){
             .indicators = cmd.data.set_hid_indicators.indicators});
+        return 0;
     }
 #endif
     default:
