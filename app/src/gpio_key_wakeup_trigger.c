@@ -25,7 +25,8 @@ struct gpio_key_wakeup_trigger_config {
 static int zmk_gpio_key_wakeup_trigger_init(const struct device *dev) {
 #if IS_ENABLED(CONFIG_PM_DEVICE)
     pm_device_init_suspended(dev);
-    pm_device_wakeup_enable(dev, true);
+    // Remove or soft-off will reboot...
+    //pm_device_wakeup_enable(dev, true);
 #endif
 
     return 0;
