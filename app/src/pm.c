@@ -131,28 +131,9 @@ int zmk_pm_soft_off(void) {
     }
 
     LOG_DBG("soft-off: go to sleep");
+    k_sleep(K_MSEC(100));
     sys_poweroff();
     return 0;
 }
-
-static int pm_battery_changed_handler(const zmk_event_t *eh) {
-    const struct zmk_battery_state_changed *ev = as_zmk_battery_state_changed(eh);
-    if (ev) {
-        if (ev->millivolts < 3450) {
-            LOG_DBG("Low battery, powering off");
-            return zmk_pm_soft_off();
-        }
-        else {
-            return 0;
-        }
-    }
-
-    return -ENOTSUP;
-}
-
-
-ZMK_LISTENER(pm_battery_response, pm_battery_changed_handler);
-
-ZMK_SUBSCRIPTION(pm_battery_response, zmk_battery_state_changed);
 
 #endif // IS_ENABLED(CONFIG_ZMK_PM_SOFT_OFF)
