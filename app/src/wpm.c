@@ -15,8 +15,10 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/event_manager.h>
 #include <zmk/events/wpm_state_changed.h>
 #include <zmk/events/keycode_state_changed.h>
+#include <zmk/events/activity_state_changed.h>
 
 #include <zmk/wpm.h>
+#include <zmk/activity.h>
 
 #define WPM_UPDATE_INTERVAL_SECONDS 5
 #define WPM_RESET_INTERVAL_SECONDS 5
@@ -33,18 +35,6 @@ static uint8_t wpm_update_counter;
 static uint32_t key_pressed_count;
 
 int zmk_wpm_get_state(void) { return wpm_state; }
-
-int wpm_event_listener(const zmk_event_t *eh) {
-    const struct zmk_keycode_state_changed *ev = as_zmk_keycode_state_changed(eh);
-    if (ev) {
-        // count only key up events
-        if (!ev->state) {
-            key_pressed_count++;
-            LOG_DBG("key_pressed_count %d keycode %d", key_pressed_count, ev->keycode);
-        }
-    }
-    return 0;
-}
 
 void wpm_work_handler(struct k_work *work) {
     wpm_update_counter++;
@@ -69,6 +59,34 @@ void wpm_expiry_function(struct k_timer *_timer) { k_work_submit(&wpm_work); }
 
 K_TIMER_DEFINE(wpm_timer, wpm_expiry_function, NULL);
 
+int wpm_event_listener(const zmk_event_t *eh) {
+    const struct zmk_activity_state_changed *eva = as_zmk_activity_state_changed(eh);
+    if (eva) {
+        switch (eva->state) {
+        case ZMK_ACTIVITY_ACTIVE:
+            k_timer_start(&wpm_timer, K_SECONDS(WPM_UPDATE_INTERVAL_SECONDS),
+                  K_SECONDS(WPM_UPDATE_INTERVAL_SECONDS));
+            return 0;
+        case ZMK_ACTIVITY_IDLE:
+            k_timer_stop(&wpm_timer);
+        case ZMK_ACTIVITY_SLEEP:
+            return 0;
+        default:
+            return 0;
+        }
+    }
+    const struct zmk_keycode_state_changed *ev = as_zmk_keycode_state_changed(eh);
+    if (ev) {
+        // count only key up events
+        if (!ev->state) {
+            key_pressed_count++;
+            LOG_DBG("key_pressed_count %d keycode %d", key_pressed_count, ev->keycode);
+        }
+    }
+    return 0;
+}
+
+
 static int wpm_init(void) {
     wpm_state = 0;
     wpm_update_counter = 0;
@@ -79,5 +97,6 @@ static int wpm_init(void) {
 
 ZMK_LISTENER(wpm, wpm_event_listener);
 ZMK_SUBSCRIPTION(wpm, zmk_keycode_state_changed);
+ZMK_SUBSCRIPTION(wpm, zmk_activity_state_changed);
 
 SYS_INIT(wpm_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
