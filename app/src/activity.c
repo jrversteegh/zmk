@@ -18,10 +18,9 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/events/position_state_changed.h>
 #include <zmk/events/sensor_event.h>
 
-#include <zmk/pm.h>
-
 #include <zmk/activity.h>
 #include <zmk/rgb_underglow.h>
+#include <zmk/pm.h>
 
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
 #include <zmk/usb.h>
@@ -77,7 +76,16 @@ static int set_state(enum zmk_activity_state state) {
     return raise_event();
 }
 
-enum zmk_activity_state zmk_activity_get_state(void) { return activity_state; }
+enum zmk_activity_state zmk_activity_get_state(void) {
+  return activity_state;
+}
+
+void zmk_activity_set_state(enum zmk_activity_state state) {
+    set_state(state);
+    if (state == ZMK_ACTIVITY_SLEEP) {
+        zmk_pm_soft_off();
+    }
+}
 
 static int note_activity(void) {
     activity_last_uptime = k_uptime_get();
@@ -92,21 +100,11 @@ void activity_work_handler(struct k_work *work) {
     int32_t inactive_time = current - activity_last_uptime;
 #if IS_ENABLED(CONFIG_ZMK_SLEEP)
     if (inactive_time > MAX_SLEEP_MS && !is_sleep_inhibited()) {
-        // Put devices in suspend power mode before sleeping
-        set_state(ZMK_ACTIVITY_SLEEP);
-
-        if (zmk_pm_suspend_devices() < 0) {
-            LOG_ERR("Failed to suspend all the devices");
-            zmk_pm_resume_devices();
-            return;
-        }
-
-        LOG_DBG("Powering off system");
-        sys_poweroff();
+        zmk_activity_set_state(ZMK_ACTIVITY_SLEEP);
     } else
 #endif /* IS_ENABLED(CONFIG_ZMK_SLEEP) */
     if (inactive_time > MAX_IDLE_MS && !is_idling_inhibited()) {
-        set_state(ZMK_ACTIVITY_IDLE);
+        zmk_activity_set_state(ZMK_ACTIVITY_IDLE);
     }
 }
 
