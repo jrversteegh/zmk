@@ -105,6 +105,12 @@ static void zmk_battery_work(struct k_work *work) {
     if (rc != 0) {
         LOG_DBG("Failed to update battery value: %d.", rc);
     }
+
+    if (last_millivolts < 3450) {
+        LOG_INF("Low battery: go to sleep!");
+        k_sleep(K_SECONDS(2));
+        zmk_activity_set_state(ZMK_ACTIVITY_SLEEP);
+    }
 }
 
 K_WORK_DEFINE(battery_work, zmk_battery_work);
