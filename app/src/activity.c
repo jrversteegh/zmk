@@ -21,6 +21,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/pm.h>
 
 #include <zmk/activity.h>
+#include <zmk/rgb_underglow.h>
 
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
 #include <zmk/usb.h>
@@ -30,12 +31,25 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zephyr/input/input.h>
 #endif
 
-bool is_usb_power_present(void) {
+bool is_sleep_inhibited(void) {
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
-    return zmk_usb_is_powered();
-#else
-    return false;
+    if (zmk_usb_is_powered()) {
+        return true;
+    }
 #endif /* IS_ENABLED(CONFIG_USB_DEVICE_STACK) */
+    return false;
+}
+
+bool is_idling_inhibited(void) {
+    if (zmk_rgb_underglow_get_forced()) {
+        return true;
+    }
+#if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
+    if (zmk_usb_is_powered()) {
+        return true;
+    }
+#endif /* IS_ENABLED(CONFIG_USB_DEVICE_STACK) */
+    return false;
 }
 
 static enum zmk_activity_state activity_state;
@@ -48,14 +62,16 @@ static uint32_t activity_last_uptime;
 #define MAX_SLEEP_MS CONFIG_ZMK_IDLE_SLEEP_TIMEOUT
 #endif
 
-int raise_event(void) {
+static int raise_event(void) {
     return raise_zmk_activity_state_changed(
         (struct zmk_activity_state_changed){.state = activity_state});
 }
 
-int set_state(enum zmk_activity_state state) {
+static int set_state(enum zmk_activity_state state) {
     if (activity_state == state)
         return 0;
+
+    LOG_DBG("Entering state: %d", state);
 
     activity_state = state;
     return raise_event();
@@ -75,7 +91,7 @@ void activity_work_handler(struct k_work *work) {
     int32_t current = k_uptime_get();
     int32_t inactive_time = current - activity_last_uptime;
 #if IS_ENABLED(CONFIG_ZMK_SLEEP)
-    if (inactive_time > MAX_SLEEP_MS && !is_usb_power_present()) {
+    if (inactive_time > MAX_SLEEP_MS && !is_sleep_inhibited()) {
         // Put devices in suspend power mode before sleeping
         set_state(ZMK_ACTIVITY_SLEEP);
 
@@ -85,12 +101,13 @@ void activity_work_handler(struct k_work *work) {
             return;
         }
 
+        LOG_DBG("Powering off system");
         sys_poweroff();
     } else
 #endif /* IS_ENABLED(CONFIG_ZMK_SLEEP) */
-        if (inactive_time > MAX_IDLE_MS) {
-            set_state(ZMK_ACTIVITY_IDLE);
-        }
+    if (inactive_time > MAX_IDLE_MS && !is_idling_inhibited()) {
+        set_state(ZMK_ACTIVITY_IDLE);
+    }
 }
 
 K_WORK_DEFINE(activity_work, activity_work_handler);

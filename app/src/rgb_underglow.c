@@ -18,6 +18,7 @@
 #include <drivers/ext_power.h>
 
 #include <zmk/rgb_underglow.h>
+#include <zmk/battery.h>
 
 #include <zmk/activity.h>
 #include <zmk/usb.h>
@@ -41,6 +42,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #define HUE_MAX 360
 #define SAT_MAX 100
 #define BRT_MAX 100
+#define MIN_BATT_MV 3600
 
 BUILD_ASSERT(CONFIG_ZMK_RGB_UNDERGLOW_BRT_MIN <= CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX,
              "ERROR: RGB underglow maximum brightness is less than minimum brightness");
@@ -59,7 +61,7 @@ struct rgb_underglow_state {
     uint8_t current_effect;
     uint16_t animation_step;
     bool on;
-    bool force_on;
+    bool force;
 };
 
 static const struct device *led_strip;
@@ -265,7 +267,7 @@ static int zmk_rgb_underglow_init(void) {
         current_effect : CONFIG_ZMK_RGB_UNDERGLOW_EFF_START,
         animation_step : 0,
         on : IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_ON_START),
-        force_on : false
+        force : false
     };
 
 #if IS_ENABLED(CONFIG_SETTINGS)
@@ -300,9 +302,17 @@ int zmk_rgb_underglow_get_state(bool *on_off) {
     return 0;
 }
 
+bool zmk_rgb_underglow_get_forced() {
+    return state.force;
+}
+
 int zmk_rgb_underglow_on(void) {
     if (!led_strip)
         return -ENODEV;
+
+    if (zmk_battery_millivolts() < MIN_BATT_MV) {
+        return 0;
+    }
 
 #if IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_EXT_POWER)
     if (ext_power != NULL) {
@@ -321,12 +331,12 @@ int zmk_rgb_underglow_on(void) {
 }
 
 int zmk_rgb_underglow_force_on(void) {
-    state.force_on = true;
+    state.force = true;
     return zmk_rgb_underglow_on();
 }
 
 int zmk_rgb_underglow_force_off(void) {
-    state.force_on = false;
+    state.force = false;
     return zmk_rgb_underglow_off();
 }
 
@@ -480,15 +490,6 @@ struct rgb_underglow_sleep_state {
     bool rgb_state_before_sleeping;
 };
 
-static int rgb_off_if_not_forced(void) {
-    if (!state.force_on) {
-        return zmk_rgb_underglow_off();
-    }
-    else {
-        return 0;
-    }
-}
-
 static int rgb_underglow_auto_state(bool target_wake_state) {
     static struct rgb_underglow_sleep_state sleep_state = {
         is_awake : true,
@@ -503,14 +504,17 @@ static int rgb_underglow_auto_state(bool target_wake_state) {
 
     if (sleep_state.is_awake) {
         if (sleep_state.rgb_state_before_sleeping) {
+            LOG_INF("Turning on LEDs after sleep");
             return zmk_rgb_underglow_on();
-        } else {
-            return rgb_off_if_not_forced();
         }
     } else {
         sleep_state.rgb_state_before_sleeping = state.on;
-        return rgb_off_if_not_forced();
+        if (state.on) {
+            LOG_INF("Turning off LEDs for sleep");
+            return zmk_rgb_underglow_off();
+        }
     }
+    return 0;
 }
 
 static int rgb_underglow_event_listener(const zmk_event_t *eh) {
@@ -529,8 +533,8 @@ static int rgb_underglow_event_listener(const zmk_event_t *eh) {
 
     const struct zmk_battery_state_changed *ev = as_zmk_battery_state_changed(eh);
     if (ev) {
-        if (ev->millivolts < 3600) {
-            LOG_DBG("Low battery, turning off leds");
+        if (ev->millivolts < MIN_BATT_MV) {
+            LOG_DBG("Low battery, turning off LEDs");
             return zmk_rgb_underglow_force_off();
         }
         else {
