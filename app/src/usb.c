@@ -23,6 +23,7 @@ static enum usb_dc_status_code usb_status = USB_DC_UNKNOWN;
 static bool is_configured;
 
 static void raise_usb_status_changed_event(struct k_work *_work) {
+    LOG_DBG("state: %d", usb_status);
     raise_zmk_usb_conn_state_changed(
         (struct zmk_usb_conn_state_changed){.conn_state = zmk_usb_get_conn_state()});
 }
@@ -32,7 +33,6 @@ K_WORK_DEFINE(usb_status_notifier_work, raise_usb_status_changed_event);
 enum usb_dc_status_code zmk_usb_get_status(void) { return usb_status; }
 
 enum zmk_usb_conn_state zmk_usb_get_conn_state(void) {
-    LOG_DBG("state: %d", usb_status);
     switch (usb_status) {
     case USB_DC_SUSPEND:
     case USB_DC_CONFIGURED:
