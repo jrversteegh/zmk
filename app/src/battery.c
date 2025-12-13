@@ -142,13 +142,14 @@ static int zmk_battery_init(void) {
 }
 
 static int battery_event_listener(const zmk_event_t *eh) {
-
-    if (as_zmk_activity_state_changed(eh)) {
-        switch (zmk_activity_get_state()) {
+    const struct zmk_activity_state_changed *eva = as_zmk_activity_state_changed(eh);
+    if (eva) {
+        switch (eva->state) {
         case ZMK_ACTIVITY_ACTIVE:
             zmk_battery_start_reporting();
             return 0;
         case ZMK_ACTIVITY_IDLE:
+            return 0;
         case ZMK_ACTIVITY_SLEEP:
             k_timer_stop(&battery_timer);
             return 0;
