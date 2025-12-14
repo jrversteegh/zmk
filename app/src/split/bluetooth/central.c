@@ -1056,6 +1056,7 @@ void split_central_split_run_callback(struct k_work *work) {
                         payload.behavior_dev);
             }
 
+            LOG_DBG("Sending BT data to peripheral");
             int err = bt_gatt_write_without_response(
                 peripherals[payload_wrapper.source].conn,
                 peripherals[payload_wrapper.source].run_behavior_handle, &payload,

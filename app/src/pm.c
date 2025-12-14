@@ -88,16 +88,10 @@ const struct device *soft_off_wakeup_sources[] = {
 
 #endif
 
-int zmk_pm_soft_off(void) {
+static void pm_soft_off_cb(struct k_work *work) {
 #if IS_ENABLED(CONFIG_PM_DEVICE)
     size_t device_count;
     const struct device *devs;
-
-#if !IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
-    zmk_endpoints_clear_current();
-    // Need to sleep to give any other threads a chance so submit endpoint data.
-    k_sleep(K_MSEC(100));
-#endif
 
     device_count = z_device_get_all_static(&devs);
 
@@ -123,17 +117,27 @@ int zmk_pm_soft_off(void) {
         pm_device_action_run(dev, PM_DEVICE_ACTION_RESUME);
     }
 #endif // HAS_WAKERS
-
     int err = zmk_pm_suspend_devices();
     if (err < 0) {
         zmk_pm_resume_devices();
-        return err;
+        return;
     }
 
     LOG_DBG("soft-off: go to sleep");
-    k_sleep(K_MSEC(100));
+    k_sleep(K_MSEC(50));
     sys_poweroff();
-    return 0;
+}
+
+K_WORK_DELAYABLE_DEFINE(pm_soft_off_work, pm_soft_off_cb);
+
+int zmk_pm_soft_off(void) {
+#if !IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    zmk_endpoints_clear_current();
+    // Need to sleep to give any other threads a chance so submit endpoint data.
+    k_sleep(K_MSEC(100));
+#endif
+
+    return k_work_schedule(&pm_soft_off_work, K_MSEC(100));
 }
 
 #endif // IS_ENABLED(CONFIG_ZMK_PM_SOFT_OFF)
