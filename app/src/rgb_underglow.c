@@ -306,7 +306,8 @@ bool zmk_rgb_underglow_get_forced() {
     return state.force;
 }
 
-int zmk_rgb_underglow_on(void) {
+
+static int rgb_underglow_on(bool save_state) {
     if (!led_strip)
         return -ENODEV;
 
@@ -327,7 +328,11 @@ int zmk_rgb_underglow_on(void) {
     state.animation_step = 0;
     k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(50));
 
-    return zmk_rgb_underglow_save_state();
+    return save_state ? zmk_rgb_underglow_save_state(): 0;
+}
+
+int zmk_rgb_underglow_on(void) {
+    return rgb_underglow_on(true);
 }
 
 int zmk_rgb_underglow_force_on(void) {
@@ -350,7 +355,8 @@ static void zmk_rgb_underglow_off_handler(struct k_work *work) {
 
 K_WORK_DEFINE(underglow_off_work, zmk_rgb_underglow_off_handler);
 
-int zmk_rgb_underglow_off(void) {
+
+static int rgb_underglow_off(bool save_state) {
     if (!led_strip)
         return -ENODEV;
 
@@ -368,7 +374,11 @@ int zmk_rgb_underglow_off(void) {
     k_timer_stop(&underglow_tick);
     state.on = false;
 
-    return zmk_rgb_underglow_save_state();
+    return save_state ? zmk_rgb_underglow_save_state(): 0;
+}
+
+int zmk_rgb_underglow_off(void) {
+    return rgb_underglow_off(true);
 }
 
 int zmk_rgb_underglow_calc_effect(int direction) {
@@ -505,13 +515,13 @@ static int rgb_underglow_auto_state(bool target_wake_state) {
     if (sleep_state.is_awake) {
         if (sleep_state.rgb_state_before_sleeping) {
             LOG_INF("Turning on LEDs after sleep");
-            return zmk_rgb_underglow_on();
+            return rgb_underglow_on(false);
         }
     } else {
         sleep_state.rgb_state_before_sleeping = state.on;
         if (state.on) {
             LOG_INF("Turning off LEDs for sleep");
-            return zmk_rgb_underglow_off();
+            return rgb_underglow_off(false);
         }
     }
     return 0;
@@ -520,8 +530,16 @@ static int rgb_underglow_auto_state(bool target_wake_state) {
 static int rgb_underglow_event_listener(const zmk_event_t *eh) {
 
 #if IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_AUTO_OFF_IDLE)
-    if (as_zmk_activity_state_changed(eh)) {
-        return rgb_underglow_auto_state(zmk_activity_get_state() == ZMK_ACTIVITY_ACTIVE);
+    const struct zmk_activity_state_changed* eva = as_zmk_activity_state_changed(eh);
+    if (eva) {
+        switch (eva->state) {
+        case ZMK_ACTIVITY_ACTIVE:
+            return rgb_underglow_auto_state(true);
+        case ZMK_ACTIVITY_IDLE:
+            return rgb_underglow_auto_state(false);
+        default:
+            return 0;
+        }
     }
 #endif
 

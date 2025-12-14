@@ -80,6 +80,7 @@ int zmk_split_transport_central_peripheral_event_handler(
 
 int zmk_split_central_invoke_behavior(uint8_t source, struct zmk_behavior_binding *binding,
                                       struct zmk_behavior_binding_event event, bool state) {
+    LOG_DBG("Device: %s", binding->behavior_dev);
     if (!active_transport || !active_transport->api || !active_transport->api->send_command) {
         return -ENODEV;
     }

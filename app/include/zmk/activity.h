@@ -10,3 +10,4 @@ enum zmk_activity_state { ZMK_ACTIVITY_ACTIVE, ZMK_ACTIVITY_IDLE, ZMK_ACTIVITY_S
 
 enum zmk_activity_state zmk_activity_get_state(void);
 void zmk_activity_set_state(enum zmk_activity_state state);
+void zmk_activity_block_state_change(bool block);

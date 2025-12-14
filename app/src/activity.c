@@ -55,6 +55,12 @@ static enum zmk_activity_state activity_state;
 
 static uint32_t activity_last_uptime;
 
+static bool state_change_blocked = false;
+
+void zmk_activity_block_state_change(bool block) {
+    state_change_blocked = block;
+}
+
 #define MAX_IDLE_MS CONFIG_ZMK_IDLE_TIMEOUT
 
 #if IS_ENABLED(CONFIG_ZMK_SLEEP)
@@ -67,7 +73,7 @@ static int raise_event(void) {
 }
 
 static int set_state(enum zmk_activity_state state) {
-    if (activity_state == state)
+    if (activity_state == state || state_change_blocked)
         return 0;
 
     LOG_DBG("Entering state: %d", state);
@@ -81,8 +87,12 @@ enum zmk_activity_state zmk_activity_get_state(void) {
 }
 
 void zmk_activity_set_state(enum zmk_activity_state state) {
+    if (state_change_blocked)
+        return;
+
     set_state(state);
     if (state == ZMK_ACTIVITY_SLEEP) {
+        state_change_blocked = true;
         zmk_pm_soft_off();
     }
 }

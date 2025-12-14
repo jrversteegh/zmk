@@ -10,7 +10,7 @@
 #include <drivers/behavior.h>
 #include <zephyr/logging/log.h>
 
-#include <zmk/pm.h>
+#include <zmk/activity.h>
 #include <zmk/behavior.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
@@ -29,12 +29,13 @@ struct behavior_soft_off_data {
 
 static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
                                      struct zmk_behavior_binding_event event) {
+    LOG_DBG("Soft off binding pressed");
     const struct device *dev = zmk_behavior_get_binding(binding->behavior_dev);
     struct behavior_soft_off_data *data = dev->data;
     const struct behavior_soft_off_config *config = dev->config;
 
     if (IS_SPLIT_PERIPHERAL && config->split_peripheral_turn_off_on_press) {
-        zmk_pm_soft_off();
+        zmk_activity_set_state(ZMK_ACTIVITY_SLEEP);
     } else {
         data->press_start = k_uptime_get();
     }
@@ -44,13 +45,14 @@ static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
 
 static int on_keymap_binding_released(struct zmk_behavior_binding *binding,
                                       struct zmk_behavior_binding_event event) {
+    LOG_DBG("Soft off binding released");
     const struct device *dev = zmk_behavior_get_binding(binding->behavior_dev);
     struct behavior_soft_off_data *data = dev->data;
     const struct behavior_soft_off_config *config = dev->config;
 
     if (config->hold_time_ms == 0) {
         LOG_DBG("No hold time set, triggering soft off");
-        zmk_pm_soft_off();
+        zmk_activity_set_state(ZMK_ACTIVITY_SLEEP);
     } else {
         uint32_t hold_time = k_uptime_get() - data->press_start;
 
@@ -58,7 +60,7 @@ static int on_keymap_binding_released(struct zmk_behavior_binding *binding,
             if (IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)) {
                 k_sleep(K_MSEC(100));
             }
-            zmk_pm_soft_off();
+            zmk_activity_set_state(ZMK_ACTIVITY_SLEEP);
         } else {
             LOG_INF("Not triggering soft off: held for %d and hold time is %d", hold_time,
                     config->hold_time_ms);
