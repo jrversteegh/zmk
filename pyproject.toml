@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "zmk"
+name = "zmkfirmware"
 version = "0.1.0"
 description = "ZMK keyboard driver"
 license = "GPL3"
@@ -12,6 +12,7 @@ requests = "^2.32.3"
 patool = "^4.0.2"
 semver = "^3.0.4"
 tqdm = "^4.67.1"
+zmk = "^0.3.2"
 
 
 [tool.poetry.group.dev.dependencies]
