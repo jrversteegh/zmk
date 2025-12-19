@@ -12,13 +12,14 @@ script_dir = Path(__file__).absolute().parent
 os.chdir(script_dir)
 
 zmk_config="/home/jaapie/Work/Devices/Aurora_Lily58/zmk-config"
+defines=f"-DZMK_EXTRA_MODULES={zmk_config} -DZMK_CONFIG={zmk_config}/config"
 
 @task
 def build(ctx):
     """Build"""
     sides = ["left", "right"]
     for cmd in [
-        f"west build -p -b nice_nano@2.0.0 -d build/{side} app -- -DZMK_EXTRA_MODULES={zmk_config} -DZMK_CONFIG={zmk_config}/config --preset={side}" for side in sides
+        f"west build -p -b nice_nano@2.0.0 -d build/{side} app -- {defines} -DSHIELD=\"splitkb_aurora_lily58_{side} nice_view_nano_adapter nice_view_orca\" --preset=release" for side in sides
     ] \
     + [f"cp build/{side}/zephyr/zmk.uf2 lily58_{side}.uf2" for side in sides]:
         ctx.run(cmd, echo=True)
@@ -29,7 +30,7 @@ def debug(ctx):
     """Build"""
     sides = ["left", "right"]
     for cmd in [
-        f"west build -p -b nice_nano@2.0.0 -d build/{side} app -- -DZMK_EXTRA_MODULES={zmk_config} -DZMK_CONFIG={zmk_config}/config --preset={side}-debug" for side in sides
+        f"west build -p -b nice_nano@2.0.0 -d build/{side} app -- {defines} -DSHIELD=\"splitkb_aurora_lily58_{side} nice_view_nano_adapter nice_view_orca\" --preset=debug" for side in sides
     ] \
     + [f"cp build/{side}/zephyr/zmk.uf2 lily58_{side}-debug.uf2" for side in sides]:
         ctx.run(cmd, echo=True)
