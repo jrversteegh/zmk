@@ -144,10 +144,9 @@ static void zmk_rgb_underglow_effect_solid(void) {
 }
 
 static void zmk_rgb_underglow_effect_breathe(void) {
+    struct zmk_led_hsb hsb = state.color;
+    hsb.b = (hsb.b + 3 * BRT_MAX / CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX / 2) * abs(state.animation_step - 1200) / 1200;
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        struct zmk_led_hsb hsb = state.color;
-        hsb.b = abs(state.animation_step - 1200) / 12;
-
         pixels[i] = hsb_to_rgb(hsb_scale_zero_max(hsb));
     }
 
