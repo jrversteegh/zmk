@@ -8,8 +8,10 @@ manifest:
       url-base: https://github.com/urob
   projects:
     - name: zephyr
-      remote: zephyrproject-rtos
-      revision: v4.1.0
+      remote: zmkfirmware
+      revision: v4.1.0+zmk-fixes
+#     remote: zephyrproject-rtos
+#     revision: v4.1.0
       clone-depth: 1
       import:
         name-blocklist:
