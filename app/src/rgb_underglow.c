@@ -26,6 +26,7 @@
 #include <zmk/events/activity_state_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/events/battery_state_changed.h>
+#include <zmk/events/position_state_changed.h>
 #include <zmk/workqueue.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
@@ -59,17 +60,20 @@ struct rgb_underglow_state {
     struct zmk_led_hsb color;
     uint8_t animation_speed;
     uint8_t current_effect;
-    uint16_t animation_step;
     uint8_t on : 1;
     uint8_t force : 1;
     uint8_t auto_enabled : 1;
     uint8_t auto_on : 1;
-    uint8_t unused : 4;
+    uint8_t brightning : 1;
+    uint8_t unused : 3;
 };
+
+static uint16_t animation_step = 0;
 
 static const struct device *led_strip;
 
 static struct led_rgb pixels[STRIP_NUM_PIXELS];
+static uint8_t brightning[STRIP_NUM_PIXELS];
 
 static struct rgb_underglow_state state;
 
@@ -145,40 +149,41 @@ static void zmk_rgb_underglow_effect_solid(void) {
 
 static void zmk_rgb_underglow_effect_breathe(void) {
     struct zmk_led_hsb hsb = state.color;
-    hsb.b = (hsb.b + 3 * BRT_MAX / CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX / 2) * abs(state.animation_step - 1200) / 1200;
+    hsb.b = (hsb.b + 3 * BRT_MAX / CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX / 2) *
+            abs(animation_step - 1200) / 1200;
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         pixels[i] = hsb_to_rgb(hsb_scale_zero_max(hsb));
     }
 
-    state.animation_step += state.animation_speed * 10;
+    animation_step += state.animation_speed * 10;
 
-    if (state.animation_step > 2400) {
-        state.animation_step = 0;
+    if (animation_step > 2400) {
+        animation_step = 0;
     }
 }
 
 static void zmk_rgb_underglow_effect_spectrum(void) {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         struct zmk_led_hsb hsb = state.color;
-        hsb.h = state.animation_step;
+        hsb.h = animation_step;
 
         pixels[i] = hsb_to_rgb(hsb_scale_min_max(hsb));
     }
 
-    state.animation_step += state.animation_speed;
-    state.animation_step = state.animation_step % HUE_MAX;
+    animation_step += state.animation_speed;
+    animation_step = animation_step % HUE_MAX;
 }
 
 static void zmk_rgb_underglow_effect_swirl(void) {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         struct zmk_led_hsb hsb = state.color;
-        hsb.h = (HUE_MAX / STRIP_NUM_PIXELS * i + state.animation_step) % HUE_MAX;
+        hsb.h = (HUE_MAX / STRIP_NUM_PIXELS * i + animation_step) % HUE_MAX;
 
         pixels[i] = hsb_to_rgb(hsb_scale_min_max(hsb));
     }
 
-    state.animation_step += state.animation_speed * 2;
-    state.animation_step = state.animation_step % HUE_MAX;
+    animation_step += state.animation_speed * 2;
+    animation_step = animation_step % HUE_MAX;
 }
 
 static void zmk_rgb_underglow_tick(struct k_work *work) {
@@ -197,6 +202,15 @@ static void zmk_rgb_underglow_tick(struct k_work *work) {
         break;
     }
 
+    if (state.brightning) {
+        for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+            if (brightning[i] > 0) {
+                pixels[i].b += brightning[i];
+                brightning[i] *= 2;
+                brightning[i] /= 3;
+            }
+        }
+    }
     int err = led_strip_update_rgb(led_strip, pixels, STRIP_NUM_PIXELS);
     if (err < 0) {
         LOG_ERR("Failed to update the RGB strip (%d)", err);
@@ -301,7 +315,7 @@ static int rgb_underglow_on() {
     }
 #endif
 
-    state.animation_step = 0;
+    animation_step = 0;
     k_timer_start(&underglow_tick, K_NO_WAIT, K_MSEC(50));
 
     return 0;
@@ -363,6 +377,21 @@ int zmk_rgb_underglow_off(void) {
     return rgb_underglow_off();
 }
 
+int zmk_rgb_underglow_brightning_on(void) {
+    state.brightning = true;
+    return 0;
+}
+
+int zmk_rgb_underglow_brightning_off(void) {
+    state.brightning = false;
+    return 0;
+}
+
+int zmk_rgb_underglow_brightning_toggle(void) {
+    return state.brightning ? zmk_rgb_underglow_brightning_off()
+                            : zmk_rgb_underglow_brightning_on();
+}
+
 int zmk_rgb_underglow_calc_effect(int direction) {
     return (state.current_effect + UNDERGLOW_EFFECT_NUMBER + direction) % UNDERGLOW_EFFECT_NUMBER;
 }
@@ -376,7 +405,7 @@ int zmk_rgb_underglow_select_effect(int effect) {
     }
 
     state.current_effect = effect;
-    state.animation_step = 0;
+    animation_step = 0;
 
     return 0;
 }
@@ -491,7 +520,46 @@ static int rgb_underglow_auto_state(bool enabled, bool on) {
     }
 }
 
+static int get_led_from_position(int position) {
+    // This function is specific to the aurora lily 58. Should use a dts map
+    // to generalize
+#if IS_ENABLED(ZMK_SPLIT_ROLE_CENTRAL)
+    if (position < 36) {
+        int c = position % 12;
+        int r = position / 12;
+        return c < 6 ? r * 6 + c : -1;
+    } else if (position < 50) {
+        return position < 43 ? position - 18 : -1;
+    } else {
+        return position < 54 ? position - 25 : -1;
+    }
+#elif IS_ENABLED(ZMK_SPLIT)
+    if (position < 36) {
+        int c = (position % 12) - 6;
+        int r = position / 12;
+        return c < 0 ? -1 : r * 6 + c;
+    } else if (position < 50) {
+        return position > 42 ? position - 25 : -1;
+    } else {
+        return position > 53 ? position - 29 : -1;
+    }
+#endif
+    return -1;
+}
+
 static int rgb_underglow_event_listener(const zmk_event_t *eh) {
+    if (state.brightning) {
+        const struct zmk_position_state_changed *evp = as_zmk_position_state_changed(eh);
+        if (evp) {
+            if (evp->state) {
+                int led = get_led_from_position(evp->position);
+                if (led >= 0 && led < STRIP_NUM_PIXELS) {
+                    LOG_DBG("RGB spotted key: %d -> led: %d", evp->position, led);
+                    brightning[led] = CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX - pixels[led].b;
+                }
+            }
+        }
+    }
 
 #if IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_AUTO_OFF_IDLE)
     const struct zmk_activity_state_changed *eva = as_zmk_activity_state_changed(eh);
@@ -539,6 +607,7 @@ ZMK_SUBSCRIPTION(rgb_underglow, zmk_usb_conn_state_changed);
 #endif
 
 ZMK_SUBSCRIPTION(rgb_underglow, zmk_battery_state_changed);
+ZMK_SUBSCRIPTION(rgb_underglow, zmk_position_state_changed);
 
 static int zmk_rgb_underglow_init(void) {
     led_strip = DEVICE_DT_GET(STRIP_CHOSEN);
@@ -558,7 +627,6 @@ static int zmk_rgb_underglow_init(void) {
         },
         animation_speed : CONFIG_ZMK_RGB_UNDERGLOW_SPD_START,
         current_effect : CONFIG_ZMK_RGB_UNDERGLOW_EFF_START,
-        animation_step : 0,
         on : IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_ON_START),
         force : false
     };

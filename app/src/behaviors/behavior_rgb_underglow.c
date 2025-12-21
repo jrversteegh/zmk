@@ -32,7 +32,7 @@ static const struct behavior_parameter_value_metadata no_arg_values[] = {
         .value = RGB_ON_CMD,
     },
     {
-        .display_name = "Turn OFF",
+        .display_name = "Turn Off",
         .type = BEHAVIOR_PARAMETER_VALUE_TYPE_VALUE,
         .value = RGB_OFF_CMD,
     },
@@ -42,9 +42,14 @@ static const struct behavior_parameter_value_metadata no_arg_values[] = {
         .value = RGB_FON_CMD,
     },
     {
-        .display_name = "Force OFF",
+        .display_name = "Force Off",
         .type = BEHAVIOR_PARAMETER_VALUE_TYPE_VALUE,
         .value = RGB_FOFF_CMD,
+    },
+    {
+        .display_name = "Toggle Brightning",
+        .type = BEHAVIOR_PARAMETER_VALUE_TYPE_VALUE,
+        .value = RGB_BTOG_CMD,
     },
     {
         .display_name = "Hue Up",
@@ -230,6 +235,8 @@ static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
         return zmk_rgb_underglow_force_on();
     case RGB_FOFF_CMD:
         return zmk_rgb_underglow_force_off();
+    case RGB_BTOG_CMD:
+        return zmk_rgb_underglow_brightning_toggle();
     case RGB_HUI_CMD:
         return zmk_rgb_underglow_change_hue(1);
     case RGB_HUD_CMD:
