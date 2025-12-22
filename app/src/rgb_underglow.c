@@ -206,11 +206,11 @@ static void zmk_rgb_underglow_tick(struct k_work *work) {
         for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
             if (brightning[i] > 0) {
                 pixels[i].b += brightning[i];
-                brightning[i] *= 2;
-                brightning[i] /= 3;
+                brightning[i] = 3 * brightning[i] / 4;
             }
         }
     }
+
     int err = led_strip_update_rgb(led_strip, pixels, STRIP_NUM_PIXELS);
     if (err < 0) {
         LOG_ERR("Failed to update the RGB strip (%d)", err);
