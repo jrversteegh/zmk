@@ -378,11 +378,13 @@ int zmk_rgb_underglow_off(void) {
 }
 
 int zmk_rgb_underglow_brightning_on(void) {
+    LOG_DBG("Setting key press brightning on");
     state.brightning = true;
     return 0;
 }
 
 int zmk_rgb_underglow_brightning_off(void) {
+    LOG_DBG("Setting key press brightning off");
     state.brightning = false;
     return 0;
 }
@@ -523,7 +525,7 @@ static int rgb_underglow_auto_state(bool enabled, bool on) {
 static int get_led_from_position(int position) {
     // This function is specific to the aurora lily 58. Should use a dts map
     // to generalize
-#if IS_ENABLED(ZMK_SPLIT_ROLE_CENTRAL)
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     if (position < 36) {
         int c = position % 12;
         int r = position / 12;
@@ -533,7 +535,7 @@ static int get_led_from_position(int position) {
     } else {
         return position < 54 ? position - 25 : -1;
     }
-#elif IS_ENABLED(ZMK_SPLIT)
+#elif IS_ENABLED(CONFIG_ZMK_SPLIT)
     if (position < 36) {
         int c = (position % 12) - 6;
         int r = position / 12;
@@ -551,12 +553,18 @@ static int rgb_underglow_event_listener(const zmk_event_t *eh) {
     if (state.brightning) {
         const struct zmk_position_state_changed *evp = as_zmk_position_state_changed(eh);
         if (evp) {
-            if (evp->state) {
+            if (evp->source == ZMK_POSITION_STATE_CHANGE_SOURCE_LOCAL) {
                 int led = get_led_from_position(evp->position);
+                LOG_DBG("RGB brightning key: %d, state: %d -> led: %d", evp->position, evp->state,
+                        led);
                 if (led >= 0 && led < STRIP_NUM_PIXELS) {
-                    LOG_DBG("RGB spotted key: %d -> led: %d", evp->position, led);
                     brightning[led] = CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX - pixels[led].b;
                 }
+                else {
+                    LOG_ERR("Invalid LED index: %d", led);
+                }
+            } else {
+                LOG_DBG("RGB spotted non local key press");
             }
         }
     }
