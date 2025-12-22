@@ -21,14 +21,15 @@
 #define RGB_COLOR_HSB_CMD 14
 #define RGB_FON_CMD 15
 #define RGB_FOFF_CMD 16
-#define RGB_BTOG_CMD 17
+#define RGB_BUP_CMD 17
+#define RGB_BDN_CMD 18
+#define RGB_HSH_CMD 19
 
 #define RGB_TOG RGB_TOG_CMD 0
 #define RGB_ON RGB_ON_CMD 0
 #define RGB_OFF RGB_OFF_CMD 0
 #define RGB_FON RGB_FON_CMD 0
 #define RGB_FOFF RGB_FOFF_CMD 0
-#define RGB_BTOG RGB_BTOG_CMD 0
 #define RGB_HUI RGB_HUI_CMD 0
 #define RGB_HUD RGB_HUD_CMD 0
 #define RGB_SAI RGB_SAI_CMD 0
@@ -39,6 +40,9 @@
 #define RGB_SPD RGB_SPD_CMD 0
 #define RGB_EFF RGB_EFF_CMD 0
 #define RGB_EFR RGB_EFR_CMD 0
+#define RGB_BUP RGB_BUP_CMD 0
+#define RGB_BDN RGB_BDN_CMD 0
+#define RGB_HSH RGB_HSH_CMD 0
 #define RGB_COLOR_HSB_VAL(h, s, v) (((h) << 16) + ((s) << 8) + (v))
 #define RGB_COLOR_HSB(h, s, v) RGB_COLOR_HSB_CMD##(RGB_COLOR_HSB_VAL(h, s, v))
 #define RGB_COLOR_HSV RGB_COLOR_HSB

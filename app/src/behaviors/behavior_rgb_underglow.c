@@ -47,11 +47,6 @@ static const struct behavior_parameter_value_metadata no_arg_values[] = {
         .value = RGB_FOFF_CMD,
     },
     {
-        .display_name = "Toggle Brightning",
-        .type = BEHAVIOR_PARAMETER_VALUE_TYPE_VALUE,
-        .value = RGB_BTOG_CMD,
-    },
-    {
         .display_name = "Hue Up",
         .type = BEHAVIOR_PARAMETER_VALUE_TYPE_VALUE,
         .value = RGB_HUI_CMD,
@@ -100,6 +95,21 @@ static const struct behavior_parameter_value_metadata no_arg_values[] = {
         .display_name = "Previous Effect",
         .type = BEHAVIOR_PARAMETER_VALUE_TYPE_VALUE,
         .value = RGB_EFR_CMD,
+    },
+    {
+        .display_name = "Brightning up",
+        .type = BEHAVIOR_PARAMETER_VALUE_TYPE_VALUE,
+        .value = RGB_BUP_CMD,
+    },
+    {
+        .display_name = "Brightning down",
+        .type = BEHAVIOR_PARAMETER_VALUE_TYPE_VALUE,
+        .value = RGB_BDN_CMD,
+    },
+    {
+        .display_name = "Hue shift",
+        .type = BEHAVIOR_PARAMETER_VALUE_TYPE_VALUE,
+        .value = RGB_HSH_CMD,
     },
 };
 
@@ -235,8 +245,6 @@ static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
         return zmk_rgb_underglow_force_on();
     case RGB_FOFF_CMD:
         return zmk_rgb_underglow_force_off();
-    case RGB_BTOG_CMD:
-        return zmk_rgb_underglow_brightning_toggle();
     case RGB_HUI_CMD:
         return zmk_rgb_underglow_change_hue(1);
     case RGB_HUD_CMD:
@@ -259,6 +267,12 @@ static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
         return zmk_rgb_underglow_cycle_effect(1);
     case RGB_EFR_CMD:
         return zmk_rgb_underglow_cycle_effect(-1);
+    case RGB_BUP_CMD:
+        return zmk_rgb_underglow_brightning(2);
+    case RGB_BDN_CMD:
+        return zmk_rgb_underglow_brightning(-2);
+    case RGB_HSH_CMD:
+        return zmk_rgb_underglow_hue_shift(1);
     case RGB_COLOR_HSB_CMD:
         return zmk_rgb_underglow_set_hsb((struct zmk_led_hsb){.h = (binding->param2 >> 16) & 0xFFFF,
                                                               .s = (binding->param2 >> 8) & 0xFF,

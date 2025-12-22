@@ -60,19 +60,19 @@ struct rgb_underglow_state {
     struct zmk_led_hsb color;
     uint8_t animation_speed;
     uint8_t current_effect;
+    uint8_t brightning;
     uint8_t on : 1;
     uint8_t force : 1;
     uint8_t auto_enabled : 1;
     uint8_t auto_on : 1;
-    uint8_t brightning : 1;
-    uint8_t unused : 3;
+    uint8_t hue_shift : 4;
 };
 
 static uint16_t animation_step = 0;
 
 static const struct device *led_strip;
 
-static struct led_rgb pixels[STRIP_NUM_PIXELS];
+static struct zmk_led_hsb pixels[STRIP_NUM_PIXELS];
 static uint8_t brightning[STRIP_NUM_PIXELS];
 
 static struct rgb_underglow_state state;
@@ -143,7 +143,7 @@ static struct led_rgb hsb_to_rgb(struct zmk_led_hsb hsb) {
 
 static void zmk_rgb_underglow_effect_solid(void) {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        pixels[i] = hsb_to_rgb(hsb_scale_min_max(state.color));
+        pixels[i] = hsb_scale_min_max(state.color);
     }
 }
 
@@ -152,7 +152,7 @@ static void zmk_rgb_underglow_effect_breathe(void) {
     hsb.b = (hsb.b + 3 * BRT_MAX / CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX / 2) *
             abs(animation_step - 1200) / 1200;
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        pixels[i] = hsb_to_rgb(hsb_scale_zero_max(hsb));
+        pixels[i] = hsb_scale_zero_max(hsb);
     }
 
     animation_step += state.animation_speed * 10;
@@ -167,7 +167,7 @@ static void zmk_rgb_underglow_effect_spectrum(void) {
         struct zmk_led_hsb hsb = state.color;
         hsb.h = animation_step;
 
-        pixels[i] = hsb_to_rgb(hsb_scale_min_max(hsb));
+        pixels[i] = hsb_scale_min_max(hsb);
     }
 
     animation_step += state.animation_speed;
@@ -179,11 +179,34 @@ static void zmk_rgb_underglow_effect_swirl(void) {
         struct zmk_led_hsb hsb = state.color;
         hsb.h = (HUE_MAX / STRIP_NUM_PIXELS * i + animation_step) % HUE_MAX;
 
-        pixels[i] = hsb_to_rgb(hsb_scale_min_max(hsb));
+        pixels[i] = hsb_scale_min_max(hsb);
     }
 
     animation_step += state.animation_speed * 2;
     animation_step = animation_step % HUE_MAX;
+}
+
+static void apply_brightning(struct zmk_led_hsb *pixel, uint8_t brightning) {
+    pixel->b += brightning;
+    pixel->h += state.hue_shift * brightning;
+    pixel->h %= HUE_MAX;
+}
+
+static void decay_brightning(uint8_t *brightning) {
+    *brightning = (6 - state.animation_speed) * (*brightning) / (7 - state.animation_speed);
+}
+
+static int zmk_led_strip_update_hsb() {
+    static struct led_rgb rgbs[STRIP_NUM_PIXELS];
+    for (int i = 0; i < STRIP_NUM_PIXELS; ++i) {
+        struct zmk_led_hsb pixel = pixels[i];
+        if (state.brightning && brightning[i] > 0) {
+            apply_brightning(&pixel, brightning[i]);
+            decay_brightning(&brightning[i]);
+        }
+        rgbs[i] = hsb_to_rgb(pixel);
+    }
+    return led_strip_update_rgb(led_strip, rgbs, STRIP_NUM_PIXELS);
 }
 
 static void zmk_rgb_underglow_tick(struct k_work *work) {
@@ -202,16 +225,7 @@ static void zmk_rgb_underglow_tick(struct k_work *work) {
         break;
     }
 
-    if (state.brightning) {
-        for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-            if (brightning[i] > 0) {
-                pixels[i].b += brightning[i];
-                brightning[i] = 3 * brightning[i] / 4;
-            }
-        }
-    }
-
-    int err = led_strip_update_rgb(led_strip, pixels, STRIP_NUM_PIXELS);
+    int err = zmk_led_strip_update_hsb();
     if (err < 0) {
         LOG_ERR("Failed to update the RGB strip (%d)", err);
     }
@@ -339,10 +353,10 @@ int zmk_rgb_underglow_force_off(void) {
 
 static void zmk_rgb_underglow_off_handler(struct k_work *work) {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        pixels[i] = (struct led_rgb){r : 0, g : 0, b : 0};
+        pixels[i] = (struct zmk_led_hsb){h : 0, s : 0, b : 0};
     }
 
-    led_strip_update_rgb(led_strip, pixels, STRIP_NUM_PIXELS);
+    zmk_led_strip_update_hsb();
 }
 
 K_WORK_DEFINE(underglow_off_work, zmk_rgb_underglow_off_handler);
@@ -377,22 +391,28 @@ int zmk_rgb_underglow_off(void) {
     return rgb_underglow_off();
 }
 
-int zmk_rgb_underglow_brightning_on(void) {
-    LOG_DBG("Setting key press brightning on");
-    state.brightning = true;
+int zmk_rgb_underglow_hue_shift(int direction) {
+    LOG_DBG("Changing hue shift");
+    state.hue_shift += direction;
     return 0;
 }
 
-int zmk_rgb_underglow_brightning_off(void) {
-    LOG_DBG("Setting key press brightning off");
-    state.brightning = false;
+int zmk_rgb_underglow_brightning(int direction) {
+    if (direction > 0) {
+        LOG_DBG("Increasing brightning");
+        state.brightning += 1;
+        if (state.brightning > 100)
+            state.brightning = 100;
+    } else if (direction < 0) {
+        LOG_DBG("Decreasing brightning");
+        state.brightning += direction;
+        if (state.brightning > 100)
+            state.brightning = 0;
+    }
     return 0;
 }
 
-int zmk_rgb_underglow_brightning_toggle(void) {
-    return state.brightning ? zmk_rgb_underglow_brightning_off()
-                            : zmk_rgb_underglow_brightning_on();
-}
+int zmk_rgb_underglow_brightning_down(void) { return 0; }
 
 int zmk_rgb_underglow_calc_effect(int direction) {
     return (state.current_effect + UNDERGLOW_EFFECT_NUMBER + direction) % UNDERGLOW_EFFECT_NUMBER;
@@ -558,9 +578,8 @@ static int rgb_underglow_event_listener(const zmk_event_t *eh) {
                 LOG_DBG("RGB brightning key: %d, state: %d -> led: %d", evp->position, evp->state,
                         led);
                 if (led >= 0 && led < STRIP_NUM_PIXELS) {
-                    brightning[led] = CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX - pixels[led].b;
-                }
-                else {
+                    brightning[led] = state.brightning - pixels[led].b;
+                } else {
                     LOG_ERR("Invalid LED index: %d", led);
                 }
             } else {
