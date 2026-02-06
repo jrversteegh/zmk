@@ -18,8 +18,9 @@ defines=f"-DZMK_EXTRA_MODULES={zmk_config} -DZMK_CONFIG={zmk_config}/config"
 def build(ctx):
     """Build"""
     sides = ["left", "right"]
+    versions = ["3.0.0", "2.0.0"]
     for cmd in [
-        f"west build -p -b nice_nano@2.0.0 -d build/{side} app -- {defines} -DSHIELD=\"splitkb_aurora_lily58_{side} nice_view_nano_adapter nice_view_orca\" --preset=release" for side in sides
+        f"west build -p -b nice_nano@{version} -d build/{side} app -- {defines} -DSHIELD=\"splitkb_aurora_lily58_{side} nice_view_nano_adapter nice_view_orca\" --preset=release" for (side, version) in zip(sides, versions)
     ] \
     + [f"cp build/{side}/zephyr/zmk.uf2 lily58_{side}.uf2" for side in sides]:
         ctx.run(cmd, echo=True)
@@ -29,8 +30,9 @@ def build(ctx):
 def debug(ctx):
     """Build"""
     sides = ["left", "right"]
+    versions = ["3.0.0", "2.0.0"]
     for cmd in [
-        f"west build -p -b nice_nano@2.0.0 -d build/{side} app -- {defines} -DSHIELD=\"splitkb_aurora_lily58_{side} nice_view_nano_adapter nice_view_orca\" --preset=debug" for side in sides
+        f"west build -p -b nice_nano@{version} -d build/{side} app -- {defines} -DSHIELD=\"splitkb_aurora_lily58_{side} nice_view_nano_adapter nice_view_orca\" --preset=debug" for (side, version) in zip(sides, versions)
     ] \
     + [f"cp build/{side}/zephyr/zmk.uf2 lily58_{side}-debug.uf2" for side in sides]:
         ctx.run(cmd, echo=True)

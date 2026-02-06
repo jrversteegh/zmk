@@ -11,4 +11,5 @@ exposes: [pro_micro]
 revisions:
   - "1.0.0"
   - "2.0.0"
+  - "3.0.0"
 default_revision: "2.0.0"
