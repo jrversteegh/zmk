@@ -9,9 +9,13 @@
 #include <zephyr/device.h>
 #include <drivers/behavior.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/poweroff.h>
 
+#include <zmk/event_manager.h>
+#include <zmk/events/activity_state_changed.h>
 #include <zmk/activity.h>
 #include <zmk/behavior.h>
+#include <zmk/pm.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
@@ -24,9 +28,6 @@ struct behavior_soft_off_data {
     uint32_t press_start;
 };
 
-#define IS_SPLIT_PERIPHERAL                                                                        \
-    (IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
-
 static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
                                      struct zmk_behavior_binding_event event) {
     LOG_DBG("Soft off binding pressed");
@@ -34,7 +35,7 @@ static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
     struct behavior_soft_off_data *data = dev->data;
     const struct behavior_soft_off_config *config = dev->config;
 
-    if (IS_SPLIT_PERIPHERAL && config->split_peripheral_turn_off_on_press) {
+    if (config->split_peripheral_turn_off_on_press) {
         zmk_activity_set_state(ZMK_ACTIVITY_SLEEP);
     } else {
         data->press_start = k_uptime_get();
@@ -57,9 +58,6 @@ static int on_keymap_binding_released(struct zmk_behavior_binding *binding,
         uint32_t hold_time = k_uptime_get() - data->press_start;
 
         if (hold_time > config->hold_time_ms) {
-            if (IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)) {
-                k_sleep(K_MSEC(100));
-            }
             zmk_activity_set_state(ZMK_ACTIVITY_SLEEP);
         } else {
             LOG_INF("Not triggering soft off: held for %d and hold time is %d", hold_time,
@@ -69,6 +67,25 @@ static int on_keymap_binding_released(struct zmk_behavior_binding *binding,
 
     return ZMK_BEHAVIOR_OPAQUE;
 }
+
+static void soft_off_handler(struct k_work *work)
+{
+    zmk_pm_soft_off();
+}
+
+K_WORK_DELAYABLE_DEFINE(soft_off_work, soft_off_handler);
+
+static int activity_change_listener(const zmk_event_t *eh)
+{
+    struct zmk_activity_state_changed *ev = as_zmk_activity_state_changed(eh);
+    if (ev->state == ZMK_ACTIVITY_SLEEP) {
+        k_work_schedule(&soft_off_work, K_MSEC(100));
+    }
+    return ZMK_EV_EVENT_BUBBLE;
+}
+
+ZMK_LISTENER(soft_off, activity_change_listener);
+ZMK_SUBSCRIPTION(soft_off, zmk_activity_state_changed);
 
 static const struct behavior_driver_api behavior_soft_off_driver_api = {
     .binding_pressed = on_keymap_binding_pressed,

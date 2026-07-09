@@ -7,7 +7,6 @@
 #include <zephyr/device.h>
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
-#include <zephyr/sys/poweroff.h>
 
 #include <zephyr/logging/log.h>
 
@@ -93,7 +92,6 @@ void zmk_activity_set_state(enum zmk_activity_state state) {
     set_state(state);
     if (state == ZMK_ACTIVITY_SLEEP) {
         state_change_blocked = true;
-        zmk_pm_soft_off();
     }
 }
 
