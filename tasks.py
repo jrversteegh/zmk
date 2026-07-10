@@ -15,6 +15,18 @@ zmk_config=f"{script_dir}/zmk-config"
 defines=f"-DZMK_EXTRA_MODULES={zmk_config} -DZMK_CONFIG={zmk_config}/config"
 
 @task
+def init(ctx):
+    """Initialize zephyr through west"""
+    west_dir = script_dir / ".west"
+    if not west_dir.exists():
+        for cmd in [
+                "west init -l app",
+                "west update"
+        ]:
+            ctx.run(cmd, echo=True)
+
+
+@task(init)
 def build(ctx):
     """Build"""
     sides = ["left", "right"]
