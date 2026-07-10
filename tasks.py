@@ -11,7 +11,7 @@ from invoke import task
 script_dir = Path(__file__).absolute().parent
 os.chdir(script_dir)
 
-zmk_config="/home/jaapie/Work/Devices/Aurora_Lily58/zmk-config"
+zmk_config=f"{script_dir}/zmk-config"
 defines=f"-DZMK_EXTRA_MODULES={zmk_config} -DZMK_CONFIG={zmk_config}/config"
 
 @task
