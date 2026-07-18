@@ -42,13 +42,13 @@ static void set_battery_symbol(lv_obj_t *label, struct battery_status_state stat
     snprintf(perc, sizeof(perc), "%3u%%", level);
     strcat(text, perc);
 #else
-    if (level > 95) {
+    if (level > 90) {
         strcat(text, LV_SYMBOL_BATTERY_FULL);
     } else if (level > 65) {
         strcat(text, LV_SYMBOL_BATTERY_3);
-    } else if (level > 35) {
+    } else if (level > 38) {
         strcat(text, LV_SYMBOL_BATTERY_2);
-    } else if (level > 5) {
+    } else if (level > 10) {
         strcat(text, LV_SYMBOL_BATTERY_1);
     } else {
         strcat(text, LV_SYMBOL_BATTERY_EMPTY);
